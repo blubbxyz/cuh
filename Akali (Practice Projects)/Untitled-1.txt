@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+A tiny, cute ("kawaii") terminal chatbot written in pure Python.
+No external packages required. Run with:  python kawaii_chatbot.py
+
+Features
+- Cute tone & emojis
+- Simple intent matching (greet, mood, joke, compliment, time, etc.)
+- Tiny in-session memory (name + a few favorites)
+- Commands: /help, /reset, /bye
+- Typing effect for extra adorableness (can be disabled)
+"""
+from __future__ import annotations
+import re
+import random
+import time
+import datetime as dt
+import sys
+
+# ====== Config ======
+TYPING_EFFECT = True  # set False if you dislike the typewriter effect
+TYPING_SPEED = 0.015  # seconds per character
+BOT_NAME = "Mochi"
+HEARTS = ["❤", "♡", "💖", "💗", "✨", "⭐"]
+KAOMOJIS = ["(｡•̀‿•́)✧", "(≧◡≦)", "(๑˃̵ᴗ˂̵)و", "(˘◡˘)", "(っ˘ω˘ς)", "(＾▽＾)"]
+
+# ====== Utilities ======
+
+def say(text: str) -> None:
+    """Print with typing effect."""
+    if not TYPING_EFFECT:
+        print(text)
+        return
+    for ch in text:
+        print(ch, end="", flush=True)
+        time.sleep(TYPING_SPEED)
+    print()
+
+
+def pick(seq):
+    return random.choice(seq)
+
+
+# ====== Tiny memory ======
+class Memory:
+    def __init__(self):
+        self.name: str | None = None
+        self.favorites: dict[str, str] = {}  # e.g., {"snack": "pocky"}
+
+    def set_name(self, text: str):
+        # try to extract a simple name
+        m = re.search(r"ich bin (.+)$|mein name (ist|=) (.+)$|i'm (.+)$|i am (.+)$", text, re.I)
+        if m:
+            candidate = next((g for g in m.groups() if g), None)
+            if candidate:
+                self.name = candidate.strip().split()[0].strip(",.!?")
+
+
+memory = Memory()
+
+
+# ====== Intent patterns ======
+INTENTS = {
+    "greet": re.compile(r"\b(hallo|hey|hi|yo|servus|moin|greetings)\b", re.I),
+    "bye": re.compile(r"\b(tsch(ü|u)ss|bye|ciao|auf wiedersehen|bb)\b", re.I),
+    "how_are_you": re.compile(r"wie geht|how are", re.I),
+    "time": re.compile(r"\b(zeit|uhr|time)\b", re.I),
+    "joke": re.compile(r"\b(joke|witz|witzig|funny)\b", re.I),
+    "compliment": re.compile(r"\b(h(ä|a)bsch|sch(ö|o)n|smart|genial|clever|cool)\b", re.I),
+    "name": re.compile(r"\bwie hei(ß|ss)t du|dein name\b", re.I),
+    "my_name": re.compile(r"\b(ich bin|mein name (ist|=)|i am|i'm)\b", re.I),
+    "favorite": re.compile(r"\b(favorit|lieblings|magst du|lieblings(essen|getr(ä|a)nk|farbe|song|spiel))\b", re.I),
+}
+
+JOKES = [
+    "Warum können Seeräuber keinen Kreis berechnen? Weil sie Pi raten! (｡>﹏<)",
+    "Hab versucht, ein Buch über Gravitation zu werfen… es kam immer zu mir zurück.",
+    "Was ist orange und geht über die Berge? – Eine Wanderine!",
+]
+
+CUTE_ACKS = [
+    "notiert~ ✍️",
+    "oki-doki!",
+    "yaaay (≧◡≦)",
+    "alles klari!",
+]
+
+FAV_KEYS = {
+    "essen": ["essen", "snack", "gericht"],
+    "getränk": ["getränk", "drink", "tee", "kaffee"],
+    "farbe": ["farbe", "color"],
+    "song": ["song", "lied", "musik"],
+    "spiel": ["spiel", "game"],
+}
+
+
+def extract_favorite(text: str) -> tuple[str | None, str | None]:
+    text_low = text.lower()
+    key_found = None
+    for canonical, keywords in FAV_KEYS.items():
+        if any(k in text_low for k in keywords):
+            key_found = canonical
+            break
+    if key_found:
+        # naive extraction after a colon or is/ist
+        m = re.search(r":\s*([^\.\n]+)$|\b(ist|=)\s*([^\.\n]+)$", text, re.I)
+        val = None
+        if m:
+            val = next((g for g in m.groups() if g and g not in ("ist", "=")), None)
+        if not val:
+            # fallback: last 4 words
+            val = " ".join(text.strip().split()[-4:])
+        return key_found, val.strip().strip(",.!?")
+    return None, None
+
+
+# ====== Response generators ======
+
+def respond(user: str) -> str:
+    u = user.strip()
+    if not u:
+        return f"Ähm… sag mir was~ {pick(KAOMOJIS)}"
+
+    # Commands first
+    if u.startswith("/"):
+        cmd = u[1:].strip().lower()
+        if cmd == "help":
+            return (
+                "Befehle:\n"
+                "/help – Hilfe\n"
+                "/reset – Mini-Gedächtnis löschen\n"
+                "/bye – Tschüss sagen"
+            )
+        if cmd == "reset":
+            memory.__init__()
+            return f"*puff* Speicher leer~ {pick(HEARTS)}"
+        if cmd == "bye":
+            return "Tschüssi! Danke fürs Quatschen (っ˘ω˘ς)"
+        return "Unbekannter Befehl. Probier /help (•̀ᴗ•́)و"
+
+    # Update name if provided
+    if INTENTS["my_name"].search(u):
+        before = memory.name
+        memory.set_name(u)
+        if memory.name and memory.name != before:
+            return f"Hi {memory.name}! Ich bin {BOT_NAME} {pick(HEARTS)}"
+
+    # Favorites extraction
+    fav_key, fav_val = extract_favorite(u)
+    if fav_key and fav_val:
+        memory.favorites[fav_key] = fav_val
+        return f"{pick(CUTE_ACKS)} Ich merke mir dein Lieblings-{fav_key}: {fav_val}! {pick(HEARTS)}"
+
+    # Intent-based replies
+    if INTENTS["greet"].search(u):
+        name = memory.name or "du"
+        return f"Heyyy {name}! {pick(KAOMOJIS)} Möchtest du plaudern oder ein Mini-Game?"
+
+    if INTENTS["bye"].search(u):
+        return "Bye-bye! Bleib fluffig~ ✨"
+
+    if INTENTS["how_are_you"].search(u):
+        return f"Ich bin {pick(['fluffig', 'voll motiviert', 'kuschlig'])} heute! Und du? {pick(HEARTS)}"
+
+    if INTENTS["time"].search(u):
+        now = dt.datetime.now().strftime("%H:%M:%S")
+        return f"Gerade ist es {now} Uhr ⏰"
+
+    if INTENTS["joke"].search(u):
+        return pick(JOKES)
+
+    if INTENTS["compliment"].search(u):
+        return f"Aww, dankeschön! Du bist auch super {pick(['cool','nice','goldig'])}! {pick(HEARTS)}"
+
+    if INTENTS["name"].search(u):
+        return f"Ich heiße {BOT_NAME}! Wie heißt du? {pick(KAOMOJIS)}"
+
+    if INTENTS["favorite"].search(u):
+        known = ", ".join(f"{k}: {v}" for k, v in memory.favorites.items()) or "noch nichts"
+        return f"Erzähl mir deine Favoriten! Ich kenne: {known}. (schreib z.B. 'Lieblingsfarbe: blau')"
+
+    # Easter eggs
+    if re.search(r"kawaii|s(ü|u)(ß|ss)|cute", u, re.I):
+        return f"Kawaii-Modus bereits aktiv~ {pick(KAOMOJIS)} {pick(HEARTS)}"
+
+    # Fallbacks
+    fallbacks = [
+        f"Mhm, spannend! Erzähl mehr? {pick(KAOMOJIS)}",
+        f"Ich höre zu~ {pick(HEARTS)}",
+        f"Willst du darüber einen Witz oder einen Tipp?",
+        f"Okii! (っ˘ω˘ς) Was genau meinst du?",
+    ]
+    return pick(fallbacks)
+
+
+# ====== Mini games / extras (optional hooks) ======
+
+def coinflip() -> str:
+    return f"Münzwurf: {'Kopf' if random.random() < 0.5 else 'Zahl'} ✨"
+
+
+# ====== Main loop ======
+
+def main():
+    say(f"{pick(HEARTS)} Hi! Ich bin {BOT_NAME}, dein mini-kleiner Chatbuddy {pick(KAOMOJIS)}")
+    say("Tippe /help für Befehle. Sag mir auch gern deinen Namen!")
+    try:
+        while True:
+            try:
+                u = input("\nDu: ")
+            except EOFError:
+                break
+            if not u:
+                continue
+            if u.strip().lower() == "flip":
+                say(coinflip())
+                continue
+            r = respond(u)
+            say(r)
+            if u.strip().lower() in {"/bye", "bye", "tschüss", "tschuss"}:
+                break
+    except KeyboardInterrupt:
+        say("Awww… bis später! ✨")
+
+
+if __name__ == "__main__":
+    main()
