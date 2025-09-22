@@ -10,7 +10,7 @@ print("""
  \___\__,_|_|_|_|_|\__,_|\__\___/|_|   """)
 print("Tip: Whenever you need to enter an input, the valid options are shown in brackets after the question (e.g., 1, 2, 3, ...).\n")
 def menu():
-    games = ["Higher - Lower", "Blackjack","TicTacToe", "Program ende"]
+    games = ["Higher - Lower", "Blackjack","TicTacToe", "close program"]
     while True:
         for index, gameop in enumerate(games, start=1):
             print(index, gameop)
@@ -28,6 +28,7 @@ def menu():
         else:
             print("not quite try entering on number corresponding to the games listed above for example '1' for Higher-Lower")
 def HigherLower():
+    print("\n" * 100)
     """
     Starts the Higher-Lower guessing game where the player selects a difficulty,
     then tries to guess a randomly chosen number within the specified range.
@@ -93,7 +94,9 @@ def HigherLower():
 
 
 def Blackjack():
+    print("\n" * 100)
     print("Blackjack is a game in which")
+    cards = [2,3,4,5,6,7,8,9,]
 
 def TicTacToe():
     def print_board(board):
@@ -149,7 +152,7 @@ def TicTacToe():
                 break
 
             current_player = "O" if current_player == "X" else "X"
-
+    print("\n" * 100)
     tiktaktoe()
 
 menu()
