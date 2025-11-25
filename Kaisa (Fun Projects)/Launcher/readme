@@ -1,0 +1,77 @@
+Portable Game Launcher
+
+A Python-based, portable game launcher for Windows. Run games directly from a USB stick while automatically syncing save files with the PC’s AppData folder. Features EXE icons, progress indicators for file transfers, and a scrollable interface for large game libraries.
+
+Features
+
+Launch games directly from a USB drive.
+
+Automatic save file synchronization between USB and PC AppData.
+
+EXE icons displayed on game buttons.
+
+Progress indicator when copying save files.
+
+Scrollable interface for many games.
+
+First-time setup for EXE paths and save directories.
+
+Requirements
+
+Windows OS
+
+Python 3.8+
+
+Python packages:
+
+pip install pillow pywin32
+
+Folder Structure
+Launcher/
+│
+├─ launcher.py               # Main Python launcher script
+└─ Games/
+   ├─ Game1/
+   │  └─ config.json        # Automatically created for EXE and save path
+   ├─ Game2/
+   │  └─ config.json
+   └─ ...
+
+
+Each game has its own folder in Games/.
+
+Saves/ inside each game folder stores save files for USB synchronization.
+
+config.json stores the EXE path and AppData save folder (created on first launch).
+
+Usage
+
+Copy the launcher folder to a USB stick.
+
+Place each game in its own folder inside Games/.
+
+Run launcher.py on any Windows PC.
+
+First time launching a game:
+
+Select the game’s EXE file.
+
+Enter the AppData save folder (e.g., LocalLow\GameName).
+
+The launcher automatically copies save files between USB and PC when starting and closing the game.
+
+Scroll through the list if there are too many games to fit in the window.
+
+Notes
+
+Only tested on Windows; EXE icon extraction uses Windows APIs.
+
+For portable use on multiple PCs, convert launcher.py to EXE using PyInstaller:
+
+pip install pyinstaller
+pyinstaller --onefile launcher.py
+
+
+The launcher works best with portable games or games where save files are stored in AppData.
+
+Antiviruses may occasionally flag Python-created EXEs – mark as safe if necessary.
